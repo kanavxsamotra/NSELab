@@ -1,42 +1,34 @@
-import hashlib
-import random
+# -*- coding: utf-8 -*-
+import hashlib, random
 
-# Each user has their own secret key
-user_secrets = {
-    "alice": "alice_secret_key",
-    "bob": "bob_secret_key"
-}
-
-# Store used nonces to prevent reuse attacks
+user_secrets = {"alice": "alice_secret_key", "bob": "bob_secret_key"}
 used_nonces = set()
+success = fail = 0  # ---- NEW FEATURE 1: track attempts ----
 
 def generate_nonce():
     return str(random.randint(100000, 999999))
 
-def hash_response(nonce, secret, username):
-    data = nonce + secret + username
-    return hashlib.sha256(data.encode()).hexdigest()
+def hash_response(n, s, u):
+    return hashlib.sha256((n + s + u).encode()).hexdigest()
 
-# ---------------- CLIENT -----------------
-username = "bob"
-secret = user_secrets[username]
-
-# Step 1: Server generates nonce
+user = input("User? (alice/bob): ").strip().lower() or "bob"  # ---- NEW FEATURE 2: quick user switch ----
+secret = user_secrets.get(user)
 nonce = generate_nonce()
-print("Server sends nonce:", nonce)
+print("Nonce:", nonce)
 
-# Step 2: Client creates response
-client_response = hash_response(nonce, secret, username)
-print(f"Client ({username}) sends response: {client_response}")
+resp = hash_response(nonce, secret, user)
+print("Response:", resp)
 
-# ---------------- SERVER -----------------
-# Step 3: Server verifies
 if nonce in used_nonces:
-    print("Replay attack detected: Nonce already used")
+    print("Replay detected")
+    fail += 1
 else:
-    expected_response = hash_response(nonce, user_secrets[username], username)
-    if client_response == expected_response:
-        print(f"Authentication Successful for user {username}")
-        used_nonces.add(nonce)  # Mark this nonce as used
+    if resp == hash_response(nonce, secret, user):
+        print("Auth OK for", user)
+        used_nonces.add(nonce)
+        success += 1
     else:
-        print("Authentication Failed")
+        print("Auth Failed")
+        fail += 1
+
+print("\nStats → Success:", success, "| Fail:", fail)
